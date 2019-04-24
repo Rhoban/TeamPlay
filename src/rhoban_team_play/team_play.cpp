@@ -1,11 +1,14 @@
 #include <iostream>
-#include "rhoban_team_play/team_play.h"
+#include <rhoban_team_play/team_play.h>
+#include <rhoban_team_play/extra_team_play.pb.h>
 
 #include <rhoban_utils/timing/time_stamp.h>
+#include <hl_communication/utils.h>
 
 #include <cmath>
 
 using namespace rhoban_utils;
+using namespace hl_communication;
 
 namespace rhoban_team_play
 {
@@ -319,6 +322,161 @@ Json::Value captainToJson(const CaptainInfo& info)
   json.append(opponents);
 
   return json;
+}
+
+/**
+ * Export the extra information from rhoban team play to this structure
+ */
+void exportTeamPlayPerceptionExtra(const TeamPlayInfo& info, Perception* dst)
+{
+  PerceptionExtra extra;
+  BallQuality* ball = extra.mutable_ball();
+  ball->set_quality(info.ballQ);
+  ball->set_valid(info.ballOk);
+  FieldQuality* field = extra.mutable_field();
+  field->set_quality(info.fieldQ);
+  field->set_consistency(info.fieldConsistency);
+  field->set_valid(info.fieldOk);
+  extra.SerializeToString(dst->mutable_free_field());
+}
+
+void exportPerception(const TeamPlayInfo& info, bool invert_field, Perception* perception)
+{
+  perception->mutable_ball_in_self()->set_x(info.ballX);
+  perception->mutable_ball_in_self()->set_y(info.ballY);
+  PositionDistribution* ball_velocity = perception->mutable_ball_velocity_in_self();
+  ball_velocity->set_x(info.ballVelX);
+  ball_velocity->set_y(info.ballVelY);
+  WeightedPose* self_in_field = perception->add_self_in_field();
+  self_in_field->set_probability(1.0);  // Currently, only one element is specified
+  self_in_field->mutable_pose()->mutable_position()->set_x(info.fieldX);
+  self_in_field->mutable_pose()->mutable_position()->set_y(info.fieldY);
+  self_in_field->mutable_pose()->mutable_dir()->set_mean(info.fieldYaw);
+  exportTeamPlayPerceptionExtra(info, perception);
+  if (invert_field)
+  {
+    invertPose(self_in_field->mutable_pose());
+  }
+}
+
+void exportTeamPlay(const TeamPlayInfo& info, TeamPlay * team_play)
+{
+  // TODO: complete with more information
+  team_play->set_status(UNSPECIFIED_STATUS);
+  team_play->set_role(info.goalKeeper ? Role::GOALIE : Role::UNSPECIFIED_ROLE);
+}
+
+void exportMiscExtra(const TeamPlayInfo& info, RobotMsg * msg)
+{
+  MiscExtra extra;
+  extra.set_time_since_last_kick(info.timeSinceLastKick);
+  extra.set_referee(info.stateReferee);
+  extra.set_robocup(info.stateRobocup);
+  extra.set_playing(info.statePlaying);
+  extra.set_search(info.stateSearch);
+  extra.set_hardware_warnings(info.hardwareWarnings);
+  extra.SerializeToString(msg->mutable_free_field());
+}
+
+void exportIntention(const TeamPlayInfo& info, bool invert_field, Intention * intention)
+{
+  if (info.placing)
+  {
+    PoseDistribution* target_pose = intention->mutable_target_pose_in_field();
+    target_pose->mutable_position()->set_x(info.targetX);
+    target_pose->mutable_position()->set_y(info.targetY);
+    PoseDistribution* local_target = intention->add_waypoints_in_field();
+    local_target->mutable_position()->set_x(info.localTargetX);
+    local_target->mutable_position()->set_y(info.localTargetY);
+    intention->set_action_planned(Action::POSITIONING);
+  }
+  else
+  {
+    // TODO: Could be done more accurately
+    intention->set_action_planned(Action::UNDEFINED);
+  }
+  // TODO: there should be a condition to check if the robot intends to kick
+  PositionDistribution* kick_target = intention->mutable_kick_target_in_field();
+  kick_target->set_x(info.ballTargetX);
+  kick_target->set_y(info.ballTargetY);
+  // Inverting field if necessary
+  if (invert_field)
+  {
+    invertPosition(kick_target);
+    if (info.placing)
+    {
+      invertPose(intention->mutable_target_pose_in_field());
+      for (int idx = 0; idx < intention->waypoints_in_field_size(); idx++)
+      {
+        invertPose(intention->mutable_waypoints_in_field(idx));
+      }
+    }
+  }
+}
+
+void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool invert_field,
+                                 GameMsg* dst)
+{
+  dst->Clear();
+  RobotMsg* msg = dst->mutable_robot_msg();
+  // Set identifier
+  msg->mutable_robot_id()->set_team_id(team_id);
+  msg->mutable_robot_id()->set_robot_id(info.id);
+  // Accessors to main sections
+  exportTeamPlay(info, msg->mutable_team_play());
+  exportPerception(info, invert_field, msg->mutable_perception());
+  exportIntention(info, invert_field, msg->mutable_intention());
+}
+
+void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication::Captain* captain)
+{
+  //TODO: only robots used should be added
+  for (int id=0; id<CAPTAIN_MAX_ID; id++)
+  {
+    StrategyOrder* order = captain->add_orders();
+    order->set_robot_id(id+1);
+    order->mutable_target_pose()->mutable_position()->set_x(info.robotTarget[id][0]);
+    order->mutable_target_pose()->mutable_position()->set_y(info.robotTarget[id][1]);
+    order->mutable_target_pose()->mutable_dir()->set_mean(info.robotTarget[id][2]);
+    Action action = Action::UNDEFINED;
+    switch(info.order[id])
+    {
+      case CaptainOrder::SearchBall:
+        action = Action::SEARCHING_BALL;
+        break;
+      case CaptainOrder::HandleBall:
+        action = Action::KICKING;
+        break;
+      case CaptainOrder::Place:
+        action = Action::POSITIONING;
+        break;
+    }
+    order->set_action(action);
+    if (invert_field)
+    {
+      invertPose(order->mutable_target_pose());
+    }
+  }
+  hl_communication::CommonBall* ball = captain->mutable_ball();
+  ball->set_nb_votes(info.common_ball.nbRobots);
+  ball->mutable_position()->set_x(info.common_ball.x);
+  ball->mutable_position()->set_y(info.common_ball.y);
+  if (invert_field)
+  {
+    invertPosition(ball->mutable_position());
+  }
+  for (int i = 0; i < info.nb_opponents; i++)
+  {
+    hl_communication::CommonOpponent* opponent = captain->add_opponents();
+    opponent->set_nb_votes(info.common_opponents[i].consensusStrength);
+    PoseDistribution* pose = opponent->mutable_pose();
+    pose->mutable_position()->set_x(info.common_opponents[i].x);
+    pose->mutable_position()->set_y(info.common_opponents[i].y);
+    if (invert_field)
+    {
+      invertPose(pose);
+    }
+  }
 }
 
 }  // namespace rhoban_team_play

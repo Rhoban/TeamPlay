@@ -1,0 +1,46 @@
+syntax = "proto2";
+
+package rhoban_team_play;
+
+message BallQuality {
+  /**
+   * Score of the ball quality in [0,1]
+   */
+  required float quality = 1;
+  /**
+   * Is ball considered as good enough
+   */
+  required bool valid = 2;
+}
+
+message FieldQuality {
+  /**
+   * Score of the ball quality in [0,1]
+   */
+  required float quality = 1;
+  /**
+   * Consistency of observations with current position
+   */
+  required float consistency = 2;
+  /**
+   * Is ball considered as good enough
+   */
+  required bool valid = 3;
+}
+
+message PerceptionExtra {
+  required BallQuality ball = 1;
+  required FieldQuality field = 2;
+}
+
+message MiscExtra {
+  /**
+   * Time elapsed since the robot performed his last kick 
+   */
+  required float time_since_last_kick = 1;
+  optional string referee = 2;
+  optional string robocup = 3;
+  optional string playing = 4;
+  optional string search = 5;
+  optional string hardware_warnings = 6;
+}

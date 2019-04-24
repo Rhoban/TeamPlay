@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rhoban_utils/serialization/json_serializable.h>
+#include <hl_communication/wrapper.pb.h>
 #include <cstdint>
 
 namespace rhoban_team_play
@@ -175,5 +176,11 @@ struct CaptainInfo
 
 void captainFromJson(CaptainInfo& info, const Json::Value& json_value);
 Json::Value captainToJson(const CaptainInfo& info);
+
+void exportTeamPlayToGameWrapper(const TeamPlayInfo& myInfo, int team_id, bool invert_field,
+                                 hl_communication::GameMsg* dst);
+
+void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication::Captain* captain);
+
 
 }  // namespace rhoban_team_play
