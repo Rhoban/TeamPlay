@@ -426,6 +426,7 @@ void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool inv
   exportTeamPlay(info, msg->mutable_team_play());
   exportPerception(info, invert_field, msg->mutable_perception());
   exportIntention(info, invert_field, msg->mutable_intention());
+  exportMiscExtra(info, msg);
 }
 
 void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication::Captain* captain)
