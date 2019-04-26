@@ -458,13 +458,16 @@ void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication:
       invertPose(order->mutable_target_pose());
     }
   }
-  hl_communication::CommonBall* ball = captain->mutable_ball();
-  ball->set_nb_votes(info.common_ball.nbRobots);
-  ball->mutable_position()->set_x(info.common_ball.x);
-  ball->mutable_position()->set_y(info.common_ball.y);
-  if (invert_field)
+  if (info.common_ball.nbRobots > 0)
   {
-    invertPosition(ball->mutable_position());
+    hl_communication::CommonBall* ball = captain->mutable_ball();
+    ball->set_nb_votes(info.common_ball.nbRobots);
+    ball->mutable_position()->set_x(info.common_ball.x);
+    ball->mutable_position()->set_y(info.common_ball.y);
+    if (invert_field)
+    {
+      invertPosition(ball->mutable_position());
+    }
   }
   for (int i = 0; i < info.nb_opponents; i++)
   {
