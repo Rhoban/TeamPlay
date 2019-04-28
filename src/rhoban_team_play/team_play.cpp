@@ -378,7 +378,7 @@ void exportMiscExtra(const TeamPlayInfo& info, RobotMsg * msg)
   extra.SerializeToString(msg->mutable_free_field());
 }
 
-void exportIntention(const TeamPlayInfo& info, bool invert_field, Intention * intention)
+void exportIntention(const TeamPlayInfo& info, bool invert_field, bool plan_kick, Intention * intention)
 {
   if (info.placing)
   {
@@ -389,6 +389,18 @@ void exportIntention(const TeamPlayInfo& info, bool invert_field, Intention * in
     local_target->mutable_position()->set_x(info.localTargetX);
     local_target->mutable_position()->set_y(info.localTargetY);
     intention->set_action_planned(Action::POSITIONING);
+    if (invert_field)
+    {
+      invertPose(target_pose);
+      for (int idx = 0; idx < intention->waypoints_in_field_size(); idx++)
+      {
+        invertPose(intention->mutable_waypoints_in_field(idx));
+      }
+    }
+  }
+  else if (plan_kick)
+  {
+    intention->set_action_planned(Action::GOING_TO_KICK);
   }
   else
   {
@@ -396,20 +408,24 @@ void exportIntention(const TeamPlayInfo& info, bool invert_field, Intention * in
     intention->set_action_planned(Action::UNDEFINED);
   }
   // TODO: there should be a condition to check if the robot intends to kick
-  PositionDistribution* kick_target = intention->mutable_kick_target_in_field();
-  kick_target->set_x(info.ballTargetX);
-  kick_target->set_y(info.ballTargetY);
-  // Inverting field if necessary
-  if (invert_field)
+  if (plan_kick)
   {
-    invertPosition(kick_target);
-    if (info.placing)
+    Eigen::Vector2d ball_in_self(info.ballX, info.ballY);
+    Eigen::Vector2d pos_in_field(info.fieldX, info.fieldY);
+    double dir = info.fieldYaw;
+    Eigen::Vector2d ball_in_field = pos_in_field;
+    ball_in_field.x() += ball_in_self.x() * cos(dir) - ball_in_self.y() * sin(dir);
+    ball_in_field.y() += ball_in_self.x() * sin(dir) + ball_in_self.y() * cos(dir);
+
+    KickIntention* kick = intention->mutable_kick();
+    kick->mutable_start()->set_x(ball_in_field.x());
+    kick->mutable_start()->set_y(ball_in_field.y());
+    kick->mutable_target()->set_x(info.ballTargetX);
+    kick->mutable_target()->set_y(info.ballTargetY);
+    if (invert_field)
     {
-      invertPose(intention->mutable_target_pose_in_field());
-      for (int idx = 0; idx < intention->waypoints_in_field_size(); idx++)
-      {
-        invertPose(intention->mutable_waypoints_in_field(idx));
-      }
+      invertPosition(kick->mutable_start());
+      invertPosition(kick->mutable_target());
     }
   }
 }
@@ -423,9 +439,10 @@ void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool inv
   msg->mutable_robot_id()->set_team_id(team_id);
   msg->mutable_robot_id()->set_robot_id(info.id);
   // Accessors to main sections
+  bool plan_kick = std::string(info.statePlaying) == "approach" || std::string(info.statePlaying) == "walkBall";
   exportTeamPlay(info, msg->mutable_team_play());
   exportPerception(info, invert_field, msg->mutable_perception());
-  exportIntention(info, invert_field, msg->mutable_intention());
+  exportIntention(info, invert_field, plan_kick, msg->mutable_intention());
   exportMiscExtra(info, msg);
 }
 
