@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(rhoban_team_play)
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -Wno-unused-parameter")
 
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
