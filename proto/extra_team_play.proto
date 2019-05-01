@@ -38,9 +38,9 @@ message MiscExtra {
    * Time elapsed since the robot performed his last kick 
    */
   required float time_since_last_kick = 1;
-  optional string referee = 2;
-  optional string robocup = 3;
-  optional string playing = 4;
-  optional string search = 5;
-  optional string hardware_warnings = 6;
+  optional bytes referee = 2;
+  optional bytes robocup = 3;
+  optional bytes playing = 4;
+  optional bytes search = 5;
+  optional bytes hardware_warnings = 6;
 }
