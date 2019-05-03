@@ -7,8 +7,8 @@
 namespace rhoban_team_play
 {
 // Broadcaster ports [UDP port]
-#define TEAM_PLAY_PORT 28645
-#define CAPTAIN_PORT 28646
+#define TEAM_PLAY_PORT 29645
+#define CAPTAIN_PORT 29646
 
 // Broadcaster frequencies [Hz]
 #define TEAM_PLAY_FREQUENCY 3
