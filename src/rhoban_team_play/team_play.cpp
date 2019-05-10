@@ -359,14 +359,14 @@ void exportPerception(const TeamPlayInfo& info, bool invert_field, Perception* p
   }
 }
 
-void exportTeamPlay(const TeamPlayInfo& info, TeamPlay * team_play)
+void exportTeamPlay(const TeamPlayInfo& info, TeamPlay* team_play)
 {
   // TODO: complete with more information
   team_play->set_status(UNSPECIFIED_STATUS);
   team_play->set_role(info.goalKeeper ? Role::GOALIE : Role::UNSPECIFIED_ROLE);
 }
 
-void exportMiscExtra(const TeamPlayInfo& info, RobotMsg * msg)
+void exportMiscExtra(const TeamPlayInfo& info, RobotMsg* msg)
 {
   MiscExtra extra;
   extra.set_time_since_last_kick(info.timeSinceLastKick);
@@ -378,7 +378,7 @@ void exportMiscExtra(const TeamPlayInfo& info, RobotMsg * msg)
   extra.SerializeToString(msg->mutable_free_field());
 }
 
-void exportIntention(const TeamPlayInfo& info, bool invert_field, bool plan_kick, Intention * intention)
+void exportIntention(const TeamPlayInfo& info, bool invert_field, bool plan_kick, Intention* intention)
 {
   if (info.placing)
   {
@@ -430,8 +430,7 @@ void exportIntention(const TeamPlayInfo& info, bool invert_field, bool plan_kick
   }
 }
 
-void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool invert_field,
-                                 GameMsg* dst)
+void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool invert_field, GameMsg* dst)
 {
   dst->Clear();
   RobotMsg* msg = dst->mutable_robot_msg();
@@ -448,16 +447,16 @@ void exportTeamPlayToGameWrapper(const TeamPlayInfo& info, int team_id, bool inv
 
 void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication::Captain* captain)
 {
-  //TODO: only robots used should be added
-  for (int id=0; id<CAPTAIN_MAX_ID; id++)
+  // TODO: only robots used should be added
+  for (int id = 0; id < CAPTAIN_MAX_ID; id++)
   {
     StrategyOrder* order = captain->add_orders();
-    order->set_robot_id(id+1);
+    order->set_robot_id(id + 1);
     order->mutable_target_pose()->mutable_position()->set_x(info.robotTarget[id][0]);
     order->mutable_target_pose()->mutable_position()->set_y(info.robotTarget[id][1]);
     order->mutable_target_pose()->mutable_dir()->set_mean(info.robotTarget[id][2]);
     Action action = Action::UNDEFINED;
-    switch(info.order[id])
+    switch (info.order[id])
     {
       case CaptainOrder::SearchBall:
         action = Action::SEARCHING_BALL;
@@ -498,6 +497,86 @@ void exportCaptain(const CaptainInfo& info, bool invert_field, hl_communication:
       invertPose(pose);
     }
   }
+}
+
+void invertField(hl_communication::Perception* perception)
+{
+  for (int idx = 0; idx < perception->self_in_field_size(); idx++)
+  {
+    invertPose(perception->mutable_self_in_field(idx)->mutable_pose());
+  }
+}
+
+void invertField(hl_communication::Intention* intention)
+{
+  if (intention->has_target_pose_in_field())
+    invertPose(intention->mutable_target_pose_in_field());
+  for (int idx = 0; idx < intention->waypoints_in_field_size(); idx++)
+  {
+    invertPose(intention->mutable_waypoints_in_field(idx));
+  }
+  if (intention->has_kick_target_in_field())
+    invertPosition(intention->mutable_kick_target_in_field());
+  if (intention->has_kick())
+  {
+    invertPosition(intention->mutable_kick()->mutable_start());
+    invertPosition(intention->mutable_kick()->mutable_target());
+  }
+}
+
+void invertField(hl_communication::Captain* captain)
+{
+  if (captain->has_ball())
+  {
+    invertPosition(captain->mutable_ball()->mutable_position());
+  }
+  for (int i = 0; i < captain->opponents_size(); i++)
+  {
+    invertPose(captain->mutable_opponents(i)->mutable_pose());
+  }
+  for (int i = 0; i < captain->orders_size(); i++)
+  {
+    StrategyOrder* order = captain->mutable_orders(i);
+    if (order->has_target_pose())
+    {
+      invertPose(order->mutable_target_pose());
+    }
+  }
+}
+
+PerceptionExtra extractPerceptionExtra(const hl_communication::Perception& msg)
+{
+  PerceptionExtra result;
+  if (msg.has_free_field())
+  {
+    result.ParseFromString(msg.free_field());
+  }
+  return result;
+}
+
+MiscExtra extractMiscExtra(const hl_communication::RobotMsg& msg)
+{
+  MiscExtra result;
+  if (msg.has_free_field())
+  {
+    result.ParseFromString(msg.free_field());
+  }
+  return result;
+}
+
+void invertField(hl_communication::RobotMsg* robot_msg)
+{
+  if (robot_msg->has_perception())
+    invertField(robot_msg->mutable_perception());
+  if (robot_msg->has_intention())
+    invertField(robot_msg->mutable_intention());
+  if (robot_msg->has_captain())
+    invertField(robot_msg->mutable_captain());
+}
+
+bool isOutdated(const hl_communication::RobotMsg& robot_msg)
+{
+  return (getTimeStamp() - robot_msg.time_stamp()) > 3 * 1000 * 1000;
 }
 
 }  // namespace rhoban_team_play
