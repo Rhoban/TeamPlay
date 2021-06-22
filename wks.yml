@@ -1,0 +1,4 @@
+deps:
+  - rhoban/utils
+  - rhoban/hl_communication
+

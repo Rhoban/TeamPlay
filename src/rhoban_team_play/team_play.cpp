@@ -1,6 +1,5 @@
 #include <iostream>
 #include <rhoban_team_play/team_play.h>
-#include <rhoban_team_play/extra_team_play.pb.h>
 
 #include <rhoban_utils/timing/time_stamp.h>
 #include <hl_communication/utils.h>
