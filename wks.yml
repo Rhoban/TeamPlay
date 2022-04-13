@@ -1,4 +1,4 @@
 deps:
-  - rhoban/utils#wks
-  - rhoban/hl_communication#wks
+  - rhoban/utils
+  - rhoban/hl_communication
 
