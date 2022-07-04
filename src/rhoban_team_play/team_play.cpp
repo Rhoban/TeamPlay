@@ -88,7 +88,7 @@ void invertField(hl_communication::RobotMsg* robot_msg)
 
 bool isOutdated(const hl_communication::RobotMsg& robot_msg)
 {
-  return (getTimeStamp() - robot_msg.time_stamp()) > 3 * 1000 * 1000;
+  return (getTimeStamp() - robot_msg.time_stamp()) > 5 * 1000 * 1000;
 }
 
 }  // namespace rhoban_team_play
