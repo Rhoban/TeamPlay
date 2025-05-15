@@ -11,7 +11,7 @@ protobuf_generate_cpp(PROTO_SOURCES PROTO_HEADERS
   proto/extra_team_play.proto
 )
 
-add_library (rhoban_team_play
+add_library (rhoban_team_play SHARED
   src/rhoban_team_play/team_play.cpp
   ${PROTO_SOURCES}
   ${PROTO_HEADERS}
