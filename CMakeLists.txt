@@ -23,5 +23,5 @@ target_link_libraries(rhoban_team_play PUBLIC
 )
 target_include_directories(rhoban_team_play SYSTEM PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR}/..
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
